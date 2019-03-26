@@ -9,9 +9,9 @@ rust 的解析库
 1. 创建实例
     let mut cmdHandler = CCmd::new();
 2. 设置默认值
-    let ip = cmdHandler.register("-ip", "localhost");
-    -ip 就是命令行参数名
-    localhost 就是 -ip 的默认值
+    - **1** let ip = cmdHandler.register("-ip", "localhost");
+    - **2** -ip 就是命令行参数名
+    - **3** localhost 就是 -ip 的默认值
 3. 调用解析
     cmdHandler.parse();
 4. 获取结果
