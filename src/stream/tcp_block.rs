@@ -7,8 +7,8 @@ pub struct CStreamBlockParse {
 }
 
 impl CStreamBlockParse {
-    pub fn line<F, T>(&mut self, startLen: u32, t: &mut T, f: &mut F) -> Result<(), &str>
-        where F: FnMut(u64, Vec<u8>, &mut T) -> (bool, u32) {
+    pub fn line<F, T>(&mut self, startLen: u64, t: &mut T, f: &mut F) -> Result<(), &str>
+        where F: FnMut(u64, Vec<u8>, &mut T) -> (bool, u64) {
         let mut len = startLen;
         let mut index = 0;
         let mut total = 0;
@@ -33,8 +33,8 @@ impl CStreamBlockParse {
         Ok(())
     }
 
-    pub fn lines<F, T, L>(&mut self, startLen: u32, t: &mut T, f: &mut F, lf: L) -> Result<(), &str>
-        where F: FnMut(u64, Vec<u8>, &mut T) -> (bool, u32), L: Fn(&T) -> bool {
+    pub fn lines<F, T, L>(&mut self, startLen: u64, t: &mut T, f: &mut F, lf: L) -> Result<(), &str>
+        where F: FnMut(u64, Vec<u8>, &mut T) -> (bool, u64), L: Fn(&T) -> bool {
         while let Ok(_) = self.line(startLen, t, f) {
             if !lf(t) {
                 return Ok(())
@@ -57,7 +57,7 @@ impl CStreamBlockParse {
 #[ignore]
 fn streamBlockParseTest() {
     /*
-    r.lines(32, &mut req, &mut |index: u64, buf: Vec<u8>, request: &mut CRequest| -> (bool, u32) {
+    r.lines(32, &mut req, &mut |index: u64, buf: Vec<u8>, request: &mut CRequest| -> (bool, u64) {
         decode_request!(index, buf, request);
     }, |request: &CRequest| -> bool {
     });
