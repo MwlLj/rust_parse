@@ -33,8 +33,8 @@ impl CStreamBlockParse {
         Ok(())
     }
 
-    pub fn lines<F, T, L>(&mut self, startLen: u64, t: &mut T, f: &mut F, lf: L) -> Result<(), &str>
-        where F: FnMut(u64, Vec<u8>, &mut T) -> (bool, u64), L: Fn(&T) -> bool {
+    pub fn lines<F, T, L>(&mut self, startLen: u64, t: &mut T, f: &mut F, lf: &mut L) -> Result<(), &str>
+        where F: FnMut(u64, Vec<u8>, &mut T) -> (bool, u64), L: FnMut(&mut T) -> bool {
         while let Ok(_) = self.line(startLen, t, f) {
             if !lf(t) {
                 return Ok(())
