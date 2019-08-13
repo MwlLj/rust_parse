@@ -4,6 +4,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 
 pub struct CCmd {
+    help: String,
     keys: HashMap<String, Rc<RefCell<String>>>
 }
 
@@ -19,6 +20,10 @@ impl CCmd {
         let mut isFind = false;
         let mut lastKey = "".to_string();
         for (index, arg) in args.enumerate() {
+            if arg == self.help {
+                self.printHelp();
+                self.exit();
+            }
             match self.keys.get(&arg) {
                 Some(field) => {
                     isFind = true;
@@ -38,8 +43,26 @@ impl CCmd {
 }
 
 impl CCmd {
+    fn printHelp(&self) {
+        println!("help:");
+        for (key, value) in self.keys.iter() {
+            println!("\t{}: {}", key, *value.borrow());
+        }
+    }
+
+    fn exit(&self) {
+        if cfg!(target_os="windows") {
+            std::process::exit(0);
+        } else {
+            std::process::exit(0);
+        }
+    }
+}
+
+impl CCmd {
     pub fn new() -> CCmd {
         CCmd{
+            help: "--help".to_string(),
             keys: HashMap::new()
         }
     }
