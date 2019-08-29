@@ -2,11 +2,11 @@
 # It is not intended for manual editing.
 [[package]]
 name = "rust_parse"
-version = "0.1.3"
+version = "0.1.4"
 
 [[package]]
 name = "tcp_block"
 version = "0.1.0"
 dependencies = [
- "rust_parse 0.1.3",
+ "rust_parse 0.1.4",
 ]

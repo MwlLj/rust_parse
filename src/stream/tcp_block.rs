@@ -15,6 +15,9 @@ impl CStreamBlockParse {
         loop {
             let mut buf = Vec::new();
             if let Ok(size) = self.reader.by_ref().take(len as u64).read_to_end(&mut buf) {
+                if len > 0 && size == 0 {
+                    return Err("read end");
+                }
                 let (b, l) = f(index, buf, t);
                 if !b {
                     break;
