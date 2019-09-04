@@ -4,7 +4,7 @@ pub fn parse<'a>(url: &'a str) -> (&'a str, Option<HashMap<String, String>>) {
     let index = match url.find('?') {
         Some(i) => i,
         None => {
-            println!("find ? error");
+            // println!("find ? error");
             return (url, None);
         }
     };
