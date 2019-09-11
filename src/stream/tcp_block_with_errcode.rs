@@ -5,7 +5,8 @@ use std::io::prelude::*;
 pub enum Code {
     End,
     Continue,
-    Error
+    Error,
+    Failed
 }
 
 pub struct CStreamBlockParse {
@@ -35,6 +36,9 @@ impl CStreamBlockParse {
                     },
                     Code::Error => {
                         return Ok(Code::Error);
+                    },
+                    Code::Failed => {
+                        return Err("f return error");
                     }
                 }
                 len = l;
