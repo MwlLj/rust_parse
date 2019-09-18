@@ -3,17 +3,24 @@ use std::rc::Rc;
 use std::cell::RefCell;
 use std::collections::HashMap;
 
+struct CItem(Rc<RefCell<String>>, String);
+
 pub struct CCmd {
     help: String,
-    keys: HashMap<String, Rc<RefCell<String>>>
+    keys: HashMap<String, CItem>
 }
 
 impl CCmd {
     pub fn register(&mut self, key: &str, default: &str) -> Rc<RefCell<String>> {
+        self.register_with_desc(key, default, "")
+    }
+
+    pub fn register_with_desc(&mut self, key: &str, default: &str, desc: &str) -> Rc<RefCell<String>> {
         let r = Rc::new(RefCell::new(default.to_string()));
-        self.keys.insert(key.to_string(), r.clone());
+        self.keys.insert(key.to_string(), CItem(r.clone(), desc.to_string()));
         r.clone()
     }
+
     pub fn parse(&mut self) {
         let args = env::args();
         let argsLen = args.len();
@@ -32,7 +39,7 @@ impl CCmd {
                 None => {
                     if isFind == true {
                         if let Some(r) = self.keys.get_mut(&lastKey) {
-                            *(*r/*get HashMap mut value*/).borrow_mut() = arg;
+                            *(*r.0/*get HashMap mut value*/).borrow_mut() = arg;
                         }
                     }
                     isFind = false;
@@ -46,7 +53,7 @@ impl CCmd {
     fn printHelp(&self) {
         println!("help:");
         for (key, value) in self.keys.iter() {
-            println!("\t{}: {}", key, *value.borrow());
+            println!("\t{}\n\t\tdefault: {}\n\t\tdesc: {}", key, *value.0.borrow(), &value.1);
         }
     }
 
