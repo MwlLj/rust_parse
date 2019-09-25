@@ -3,7 +3,7 @@ use std::rc::Rc;
 use std::cell::RefCell;
 use std::collections::HashMap;
 
-struct CItem(Rc<RefCell<String>>, String);
+struct CItem(Rc<RefCell<String>>, String, bool);
 
 pub struct CCmd {
     help: String,
@@ -17,8 +17,18 @@ impl CCmd {
 
     pub fn register_with_desc(&mut self, key: &str, default: &str, desc: &str) -> Rc<RefCell<String>> {
         let r = Rc::new(RefCell::new(default.to_string()));
-        self.keys.insert(key.to_string(), CItem(r.clone(), desc.to_string()));
+        self.keys.insert(key.to_string(), CItem(r.clone(), desc.to_string(), false));
         r.clone()
+    }
+
+    pub fn has(&self, key: &str) -> bool {
+        let v = match self.keys.get(key) {
+            Some(v) => v,
+            None => {
+                return false;
+            }
+        };
+        v.2
     }
 
     pub fn parse(&mut self) {
@@ -35,6 +45,9 @@ impl CCmd {
                 Some(field) => {
                     isFind = true;
                     lastKey = arg;
+                    if let Some(r) = self.keys.get_mut(&lastKey) {
+                        r.2 = true;
+                    };
                 },
                 None => {
                     if isFind == true {
