@@ -108,6 +108,7 @@ fn parse<'a>(url: &'a str) -> Result<Url, &'a str> {
 mod test {
     use super::*;
     #[test]
+    #[ignore]
     fn parseTest() {
         let url = "http://127.0.0.1:50000/index?user=Jake&pwd=123456";
         match parse(url) {

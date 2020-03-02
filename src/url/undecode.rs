@@ -41,6 +41,7 @@ pub fn parse<'a>(url: &'a str) -> (&'a str, Option<HashMap<String, String>>) {
 }
 
 #[test]
+#[ignore]
 fn parseTest() {
     let (url, params) = parse("/index?username=liujun&userpwd=123456&age=20");
     println!("url: {}, params: {:?}", url, params);
