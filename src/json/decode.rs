@@ -29,8 +29,8 @@ impl Array {
 pub enum Value {
     None,
     Str(String),
-    Int32(i32),
-    Float32(f32),
+    Int64(i64),
+    Float64(f64),
     Object(Object),
     Array(Array)
 }
@@ -54,6 +54,7 @@ enum ParseMode {
 
 enum InnerMode {
     Normal,
+    FindMidNext,
     FindQuota,
     Quota,
     FindColon,
@@ -67,6 +68,11 @@ enum Code {
     End,
     Continue,
     Error
+}
+
+enum ValueParseMode {
+    Integer,
+    Decimal
 }
 
 struct Inner {
@@ -143,7 +149,7 @@ impl Json {
                     '[' => {
                         inner_data.value = Value::Array(Array::new());
                         *parse_mode = ParseMode::Mid;
-                        // inner_data.mode = InnerMode::;
+                        inner_data.mode = InnerMode::FindMidNext;
                     },
                     _ => {
                     }
@@ -162,6 +168,7 @@ impl Json {
                                     v = Value::Object(obj.clone());
                                 },
                                 Value::Array(arr) => {
+                                    v = Value::Array(arr.clone());
                                 },
                                 // Value::None => {
                                 // },
@@ -169,7 +176,7 @@ impl Json {
                                     /*
                                     ** 数值
                                     */
-                                    v = match self.str_to_value(&inner_data.word) {
+                                    v = match self.numstr_to_value(&inner_data.word) {
                                         Ok(v) => v,
                                         Err(err) => {
                                             println!("str to value error, err: {}", err);
@@ -179,7 +186,7 @@ impl Json {
                                 }
                             }
                             obj.insert(inner_data.key_tmp.clone(), v);
-                            *value = Value::Object(obj.clone());
+                            *value = inner_data.value.clone();
                         },
                         _ => {
                         }
@@ -220,8 +227,10 @@ impl Json {
                                             v = Value::Str(s.to_string());
                                         },
                                         Value::Object(obj) => {
+                                            v = Value::Object(obj.clone());
                                         },
                                         Value::Array(arr) => {
+                                            v = Value::Array(arr.clone());
                                         },
                                         // Value::None => {
                                         // },
@@ -229,7 +238,7 @@ impl Json {
                                             /*
                                             ** 数值
                                             */
-                                            v = match self.str_to_value(&inner_data.word) {
+                                            v = match self.numstr_to_value(&inner_data.word) {
                                                 Ok(v) => v,
                                                 Err(err) => {
                                                     println!("str to value error, err: {}", err);
@@ -260,9 +269,16 @@ impl Json {
                             self.object(chars, &mut parse_mode_sub, &mut inner_data_sub, &mut value_sub);
                             inner_data.value_tmp = value_sub;
                         } else if c == '[' {
-                            let mut parse_mode_sub = ParseMode::Normal;
+                            let mut parse_mode_sub = ParseMode::Mid;
                             let mut inner_data_sub = Inner::default();
                             let mut value_sub = Value::None;
+                            inner_data_sub.mode = InnerMode::FindMidNext;
+                            inner_data_sub.value = Value::Array(Array::new());
+                            /*
+                            ** [{}]
+                            */
+                            self.object(chars, &mut parse_mode_sub, &mut inner_data_sub, &mut value_sub);
+                            inner_data.value_tmp = value_sub;
                         } else {
                             if !c.is_ascii_whitespace() {
                                 inner_data.word.push(c);
@@ -283,9 +299,111 @@ impl Json {
                 }
             },
             ParseMode::Mid => {
-                if c == ']' {
-                    // *parse_mode = ParseMode::Normal;
-                    return Code::End;
+                if c == ']' || c == ',' {
+                    match &mut inner_data.value {
+                        Value::Array(arr) => {
+                            let mut v = Value::None;
+                            match &inner_data.value_tmp {
+                                Value::Str(s) => {
+                                    v = Value::Str(s.to_string());
+                                },
+                                Value::Object(obj) => {
+                                    v = Value::Object(obj.clone());
+                                },
+                                Value::Array(arr) => {
+                                    v = Value::Array(arr.clone());
+                                },
+                                _ => {
+                                    /*
+                                    ** 数值
+                                    */
+                                    v = match self.numstr_to_value(&inner_data.word) {
+                                        Ok(v) => v,
+                                        Err(err) => {
+                                            println!("str to value error, err: {}", err);
+                                            return Code::Error;
+                                        }
+                                    };
+                                }
+                            }
+                            arr.push_back(inner_data.value_tmp.clone());
+                            if c == ']' {
+                               *value = inner_data.value.clone();
+                            }
+                        },
+                        _ => {
+                            /*
+                            ** 这里不会执行到
+                            */
+                        }
+                    }
+                    if c == ',' {
+                        inner_data.word.clear();
+                        inner_data.mode = InnerMode::FindMidNext;
+                        inner_data.value_tmp = Value::None;
+                        return Code::Continue;
+                    }
+                    if c == ']' {
+                        inner_data.clear();
+                        *parse_mode = ParseMode::Normal;
+                        return Code::End;
+                    }
+                }
+                match inner_data.mode {
+                    InnerMode::FindMidNext => {
+                        /*
+                        ** [ 后可以跟 { 或者 " 或者 无
+                        */
+                        if c == '"' {
+                            /*
+                            ** [""]
+                            */
+                            inner_data.mode = InnerMode::Quota;
+                        } else if c == '{' {
+                            let mut parse_mode_sub = ParseMode::Big;
+                            let mut inner_data_sub = Inner::default();
+                            let mut value_sub = Value::None;
+                            inner_data_sub.mode = InnerMode::FindQuota;
+                            inner_data_sub.value = Value::Object(Object::new());
+                            /*
+                            ** [{}]
+                            */
+                            self.object(chars, &mut parse_mode_sub, &mut inner_data_sub, &mut value_sub);
+                            inner_data.value_tmp = value_sub;
+                        } else if c == '[' {
+                            /*
+                            ** [[]]
+                            */
+                            let mut parse_mode_sub = ParseMode::Mid;
+                            let mut inner_data_sub = Inner::default();
+                            let mut value_sub = Value::None;
+                            inner_data_sub.mode = InnerMode::FindMidNext;
+                            inner_data_sub.value = Value::Array(Array::new());
+                            /*
+                            ** [{}]
+                            */
+                            self.object(chars, &mut parse_mode_sub, &mut inner_data_sub, &mut value_sub);
+                            inner_data.value_tmp = value_sub;
+                        } else {
+                            if !c.is_ascii_whitespace() {
+                                /*
+                                ** 数值 => [1, 2, 3]
+                                */
+                                inner_data.word.push(c);
+                            }
+                        }
+                    },
+                    InnerMode::Quota => {
+                        if c == '"' {
+                            inner_data.value_tmp = Value::Str(inner_data.word.clone());
+                            inner_data.mode = InnerMode::FindMidNext;
+                            inner_data.word.clear();
+                        } else {
+                            inner_data.word.push(c);
+                        }
+                    },
+                    _ => {
+                    }
                 }
             }
             _ => {
@@ -294,8 +412,46 @@ impl Json {
         return Code::Continue;
     }
 
-    fn str_to_value(&self, s: &str) -> Result<Value, &str> {
+    fn numstr_to_value(&self, s: &str) -> Result<Value, &str> {
         let mut value = Value::None;
+        let chars = s.chars();
+        let mut mode = ValueParseMode::Integer;
+        let mut integer: u64 = 0;
+        let mut decimal: f64 = 0.0;
+        let mut decimal_rate: f64 = 0.1;
+        let mut p_n_symbol: i64 = 1;
+        for c in chars {
+            if c == '-' {
+                p_n_symbol = -1;
+                continue;
+            }
+            match mode {
+                ValueParseMode::Integer => {
+                    if c == '.' {
+                        mode = ValueParseMode::Decimal;
+                    } else {
+                        if c >= '0' && c <= '9' {
+                            integer *= 10;
+                            integer += (c as u8 - 48) as u64;
+                        }
+                    }
+                },
+                ValueParseMode::Decimal => {
+                    if c >= '0' && c <= '9' {
+                        decimal += (c as u8 - 48) as f64 * decimal_rate;
+                        decimal_rate /= 10.0;
+                    }
+                }
+            }
+        }
+        match mode {
+            ValueParseMode::Integer => {
+                value = Value::Int64(p_n_symbol * integer as i64);
+            },
+            ValueParseMode::Decimal => {
+                value = Value::Float64(p_n_symbol as f64 * (integer as f64 + decimal));
+            }
+        }
         Ok(value)
     }
 }
@@ -311,8 +467,8 @@ impl Json {
 mod test {
     use super::*;
     #[test]
-    // #[ignore]
-    fn from_str_test() {
+    #[ignore]
+    fn from_str_object_test() {
         let json_parser = Json::new();
         let value = json_parser.from_str(r#"
         {
@@ -324,6 +480,48 @@ mod test {
             }
         }
             "#);
+        println!("{:?}", value);
+    }
+
+    #[test]
+    // #[ignore]
+    fn from_str_array_test() {
+        let json_parser = Json::new();
+        let value = json_parser.from_str(r#"
+        [
+            {
+                "name": "Jake",
+                "age": 20,
+                "obj1": {
+                    "f1": "v1",
+                    "f2": "v2"
+                },
+                "arr1": ["1", "2", "3"],
+                "arr2": [
+                    {
+                        "f3": "v3",
+                        "f4": "v4"
+                    }
+                ]
+            },
+            {
+                "name": "Jake",
+                "age": 20,
+                "obj1": {
+                    "f1": "v1",
+                    "f2": "v2"
+                }
+            }
+        ]
+            "#);
+        println!("{:?}", value);
+    }
+
+    #[test]
+    #[ignore]
+    fn numstr_to_value_test() {
+        let json_parser = Json::new();
+        let value = json_parser.numstr_to_value("-123789.456");
         println!("{:?}", value);
     }
 }
