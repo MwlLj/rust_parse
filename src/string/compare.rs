@@ -13,10 +13,27 @@ pub enum KeywordStatus {
     Matched
 }
 
+/*
+ * 匹配到了长度, 但是是否结束
+ * */
+pub type IsEndCB = fn(c: &u8) -> bool;
+
 impl<'a> Keyword<'a> {
-    pub fn matched(&mut self, c: &u8) -> KeywordStatus {
+    pub fn matched(&mut self, c: &u8, is_end_cb: Option<IsEndCB>) -> KeywordStatus {
         if self.src.len() == 0 {
             return KeywordStatus::Error;
+        }
+        match &is_end_cb {
+            Some(cb) => {
+                if (cb)(c) {
+                    if self.index == self.length {
+                        self.index = 0;
+                        return KeywordStatus::Matched;
+                    }
+                }
+            },
+            None => {
+            }
         }
         match self.src.get(self.index) {
             Some(v) => {
@@ -28,13 +45,45 @@ impl<'a> Keyword<'a> {
                 }
             },
             None => {
-                panic!("should not happend");
+                // panic!("should not happend index: {}, length: {}", self.index, self.length);
+                self.index = 0;
+                return KeywordStatus::Error;
             }
         }
         if self.index == self.length {
-            self.index = 0;
-            return KeywordStatus::Matched;
+            match &is_end_cb {
+                Some(_) => {
+                },
+                None => {
+                    self.index = 0;
+                    return KeywordStatus::Matched;
+                }
+            }
         }
+        /*
+        if self.index == self.length {
+            match &is_end_cb {
+                Some(cb) => {
+                    if (cb)() {
+                        /*
+                         * 结束 => 匹配
+                         * */
+                        self.index = 0;
+                        return KeywordStatus::Matched;
+                    } else {
+                        /*
+                         * 没有结束 => 继续
+                         * */
+                        return KeywordStatus::Continue;
+                    }
+                },
+                None => {
+                    self.index = 0;
+                    return KeywordStatus::Matched;
+                }
+            }
+        }
+        */
         return KeywordStatus::Continue;
     }
 
@@ -51,14 +100,27 @@ mod test {
     use super::*;
 
     #[test]
-    #[ignore]
+    // #[ignore]
     fn keyword_matched_test() {
-        let stmt = "hello {}, nice to meet too".as_bytes();
-        let mut keyword = Keyword::new("{}".as_bytes());
+        let stmt = "func function func fn".as_bytes();
+        let mut func = Keyword::new("func".as_bytes());
+        let mut function = Keyword::new("function".as_bytes());
         for c in stmt {
-            match keyword.matched(c) {
+            match func.matched(c, Some(|c| {
+                if *c as char == ' ' {
+                    return true;
+                }
+                false
+            })) {
                 KeywordStatus::Matched => {
-                    println!("metched");
+                    println!("metched func");
+                },
+                _ => {
+                }
+            }
+            match function.matched(c, None) {
+                KeywordStatus::Matched => {
+                    println!("matched function");
                 },
                 _ => {
                 }
