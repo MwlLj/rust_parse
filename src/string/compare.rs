@@ -19,21 +19,19 @@ pub enum KeywordStatus {
 pub type IsEndCB = fn(c: &u8) -> bool;
 
 impl<'a> Keyword<'a> {
-    pub fn matched(&mut self, c: &u8, is_end_cb: Option<IsEndCB>) -> KeywordStatus {
+    pub fn matched(&mut self, c: &u8, is_end_cb: IsEndCB) -> KeywordStatus {
         if self.src.len() == 0 {
             return KeywordStatus::Error;
         }
-        match &is_end_cb {
-            Some(cb) => {
-                if (cb)(c) {
-                    if self.index == self.length {
-                        self.index = 0;
-                        return KeywordStatus::Matched;
-                    }
-                }
-            },
-            None => {
+        if (is_end_cb)(c) {
+            if self.index == self.length {
+                self.index = 0;
+                return KeywordStatus::Matched;
             }
+        }
+        if self.index >= self.length {
+            self.index = 0;
+            return KeywordStatus::Error;
         }
         match self.src.get(self.index) {
             Some(v) => {
@@ -45,46 +43,19 @@ impl<'a> Keyword<'a> {
                 }
             },
             None => {
-                // panic!("should not happend index: {}, length: {}", self.index, self.length);
-                self.index = 0;
-                return KeywordStatus::Error;
+                panic!("should not happend");
+                // self.index = 0;
+                // return KeywordStatus::Error;
             }
         }
-        if self.index == self.length {
-            match &is_end_cb {
-                Some(_) => {
-                },
-                None => {
-                    self.index = 0;
-                    return KeywordStatus::Matched;
-                }
-            }
-        }
-        /*
-        if self.index == self.length {
-            match &is_end_cb {
-                Some(cb) => {
-                    if (cb)() {
-                        /*
-                         * 结束 => 匹配
-                         * */
-                        self.index = 0;
-                        return KeywordStatus::Matched;
-                    } else {
-                        /*
-                         * 没有结束 => 继续
-                         * */
-                        return KeywordStatus::Continue;
-                    }
-                },
-                None => {
-                    self.index = 0;
-                    return KeywordStatus::Matched;
-                }
-            }
-        }
-        */
         return KeywordStatus::Continue;
+    }
+
+    pub fn last_result(&self) -> KeywordStatus {
+        if self.index == self.length {
+            return KeywordStatus::Matched;
+        }
+        KeywordStatus::Error
     }
 
     pub fn new(src: &'a [u8]) -> Self {
@@ -100,25 +71,30 @@ mod test {
     use super::*;
 
     #[test]
-    // #[ignore]
+    #[ignore]
     fn keyword_matched_test() {
-        let stmt = "func function func fn".as_bytes();
+        let stmt = "funcx fun func function func".as_bytes();
         let mut func = Keyword::new("func".as_bytes());
         let mut function = Keyword::new("function".as_bytes());
         for c in stmt {
-            match func.matched(c, Some(|c| {
+            match func.matched(c, |c| {
                 if *c as char == ' ' {
                     return true;
                 }
                 false
-            })) {
+            }) {
                 KeywordStatus::Matched => {
                     println!("metched func");
                 },
                 _ => {
                 }
             }
-            match function.matched(c, None) {
+            match function.matched(c, |c| {
+                if *c as char == ' ' {
+                    return true
+                }
+                false
+            }) {
                 KeywordStatus::Matched => {
                     println!("matched function");
                 },
@@ -126,5 +102,11 @@ mod test {
                 }
             }
         }
+        if let KeywordStatus::Matched = func.last_result() {
+            println!("metched func");
+        };
+        if let KeywordStatus::Matched = function.last_result() {
+            println!("metched function");
+        };
     }
 }
