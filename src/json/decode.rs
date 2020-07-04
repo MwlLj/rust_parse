@@ -484,7 +484,7 @@ mod test {
     }
 
     #[test]
-    // #[ignore]
+    #[ignore]
     fn from_str_array_test() {
         let json_parser = Json::new();
         let value = json_parser.from_str(r#"
