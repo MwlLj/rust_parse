@@ -14,13 +14,6 @@ pub struct Keyword<'a, MatchedF: FnMut()> {
     matched_f: MatchedF
 }
 
-pub enum KeywordStatus {
-    Error,
-    Continue,
-    Matched
-}
-
-
 impl<'a, MatchedF: FnMut()> Keyword<'a, MatchedF> {
     pub fn matched(&mut self, c: &u8) {
         if (self.is_end_cb)(c) {
@@ -71,6 +64,7 @@ impl<'a, MatchedF: FnMut()> std::ops::Drop for Keyword<'a, MatchedF> {
     }
 }
 
+#[cfg(test)]
 mod test {
     use super::*;
 
